@@ -6,5 +6,3 @@ Project Elektor Magazine 170464
 * List 2
 
 ![MicroSupply](nothing/MicroSupply.png)
-
-![Optional Text](nothing/MicroSupply.png)
