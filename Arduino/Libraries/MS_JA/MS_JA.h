@@ -49,6 +49,8 @@ bool WriteOledEnd(String st1, String st2, String st3, String st4);
 bool WriteOledFunc(String st1, String st2, String st3, String Function);
 String ConvertFloatString(float fOut, byte valComa);
 void functTest();
+byte functCalibrate(bool flag);
+void setCalibrate(byte Calibrate);
 void WriteOledGain(String stG);
 void WriteOledLed(String color);
 void WriteOledReadI2C(String valLTC);

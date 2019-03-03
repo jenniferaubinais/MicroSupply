@@ -79,6 +79,17 @@ void setup()
   Serial.println("(c) Jennifer AUBINAIS 2018 version 3.0");
   delay(2000);
   //---------------------
+  // Message if Debug Mode
+  //---------------------
+  if (flagDebug)
+  {
+    ClearOled();
+    WriteOled(0,0,"!!!!!!!!!!!!");
+    WriteOled(3,5,"Debug Mode");
+    WriteOled(6,20,"No PC !!");
+    delay(2000);
+  }
+  //---------------------
   // wait external Power
   //---------------------
   int VPower = (analogRead(pPowerIn))/40;
@@ -125,7 +136,27 @@ void setup()
   // Init Power at 0
   //-----------------
   int8_t retour = i2c_write_word_data(AddrLTC2631,0b01110000,0);
-  retour = i2c_write_word_data(AddrLTC2631,0b00110000,0xFFFF);
+  retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+  //----------------------------
+  // Read calibrate
+  //----------------------------
+  byte Calibrate  = EEPROM.read(2);
+  writeDeb("Calibrate Mem : ", flagDebug);
+  writelnDeb((String)Calibrate, flagDebug);
+  if (Calibrate > 10) Calibrate = 5;
+  if (digitalRead(buttonPinUP) == 0 && digitalRead(buttonPinDOWN) == 0) 
+  {
+    Calibrate = functCalibrate(flagDebug);
+    EEPROM.write(2, Calibrate);
+    writeDeb("Calibrate OK : ", flagDebug);
+    writelnDeb((String)Calibrate, flagDebug);
+  }
+  setCalibrate(Calibrate);
+  while(digitalRead(buttonPinUP) == 0);
+  while(digitalRead(buttonPinDOWN) == 0);
+  delay(100);
+  while(digitalRead(buttonPinUP) == 0);
+  while(digitalRead(buttonPinDOWN) == 0);
   //----------------------------
   // Read for Test if necessary
   //----------------------------
@@ -149,7 +180,14 @@ void setup()
   // Read Power value from EEPROM and Output LTC2631
   //-------------------------------------------------
   Power  = (EEPROM.read(0) * 256) + EEPROM.read(1);
-  if (Power > 500) Power = 150;
+  Power = Power / 5;
+  Power = Power * 5;
+  if ((Power > 501) || (Power < 150))
+  {
+    Power = 150;
+    EEPROM.write(0, Power >> 8);
+    EEPROM.write(1, Power & 0x00FF);
+  }
   writeDeb("Power in memory : ", flagDebug);
   writelnDeb((String)Power, flagDebug);
   //-----------------

@@ -42,6 +42,7 @@ unsigned char font[] = {
 //***************************************************************************//
 volatile uint8_t *csport, *dcport, cspinmask, dcpinmask;
 extern volatile unsigned long timer0_millis;
+volatile byte MemCalibrate = 5;
 //***************************************************************************//
 // read current
 //***************************************************************************//
@@ -99,7 +100,7 @@ uint16_t readCurrent(int iPower, bool flag)
       // * 100
       if (adc_code_100 < limite)
       {
-        uI = (adc_code_100+2)/10;
+        uI = (adc_code_100 + MemCalibrate)/10;
       }
       else
       // * 10
@@ -497,6 +498,58 @@ uint16_t readI2C(byte address,byte x)
 // Function RESET
 //***************************************************************************//
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
+//***************************************************************************//
+// All test if button is presse on startup
+//***************************************************************************//
+byte functCalibrate(bool flag)
+{
+    delay(500);
+    ResetOled();
+    WriteOled(5,0," Calibrate ");
+    delay(1500);
+    WriteOledFunc("Connect","1M ohm","on output","NEXT");
+    byte retour = i2c_write_word_data(AddrLTC2631,0b00110000,0xFFFF);
+    retour = i2c_write_word_data(AddrLTC2631,0b00110000,0xFFFF);
+    byte value = readI2C(AddrLTC2309,0b01111000);
+    byte Min = 100;
+    byte Max = 0;
+    for (int x = 0; x < 100; x++)
+    {
+        value = readI2C(AddrLTC2309,0b01111000);
+        if ((value > 80) || (value < 30))
+        {
+            retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+            retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+            WriteOledFunc("ERROR","Calibrate","1M connect","END");
+        }
+        if (value > Max) Max = value;
+        if (value < Min) Min = value;
+    }
+    retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+    retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+    if (flag)
+    {
+        writeDeb("Min : ",true);
+        writeDeb((String)Min,true);
+        writeDeb(" - Max : ",true);
+        writelnDeb((String)Max,true);
+    }
+    if ((Max-Min) > 9)
+    {
+        retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+        retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
+        WriteOledFunc("ERROR","Calibrate","1M connect","END");
+    }
+    WriteOledFunc("MicroSupply","is Ready","","NEXT");
+    return 50-Min;
+}
+//***************************************************************************//
+// Set value to variable
+//***************************************************************************//
+void setCalibrate(byte Calibrate)
+{
+    MemCalibrate = Calibrate;
+}
 //***************************************************************************//
 // All test if button is presse on startup
 //***************************************************************************//
