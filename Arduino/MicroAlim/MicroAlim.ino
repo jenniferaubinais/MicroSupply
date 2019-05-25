@@ -2,6 +2,8 @@
 #include <inttypes.h>
 #include <MS_JA.h>
 #include <WString.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
 //
 #define pPowerIn A1
 #define pTest 6
@@ -37,6 +39,9 @@ RESULTAT Resultat = {0,0,true};
 bool valBlink = false;
 int Power = 0;
 int countOrangeLed = 0;
+char val[5];
+//***************************************************************************//
+extern void serialEventRun(void) __attribute__((weak));
 //***************************************************************************//
 // MAIN program
 //***************************************************************************//  
@@ -69,14 +74,14 @@ void setup()
   InitOled();
   ResetOled();
   WriteOled(4,5,"(c) Elektor");
-  WriteOled(6,15,"2018 - JA");
+  WriteOled(6,15,"2019 - JA");
   //-------------
   // Init Serial
   //-------------
   Serial.begin(115200);
   Serial.println("Hello, Micro Supply");
   Serial.println("(c) Elektor - 170464");
-  Serial.println("(c) Jennifer AUBINAIS 2018 version 3.0");
+  Serial.println("(c) Jennifer AUBINAIS 2019 version 5.0");
   delay(2000);
   //---------------------
   // Message if Debug Mode
@@ -92,40 +97,22 @@ void setup()
   //---------------------
   // wait external Power
   //---------------------
-  int VPower = (analogRead(pPowerIn))/40;
-  writeDeb("External power : ", flagDebug);
-  writelnDeb((String)VPower, flagDebug);
-  if (VPower < 10)
+  float fPower = ((float)analogRead(pPowerIn) / 40) + 0.1;
+  writelnDeb((String)fPower, flagDebug);
+  if (fPower < 10)
   {
     ClearOled();
     WriteOled(1,5,"Connect");
     WriteOled(3,5,"External");
     WriteOled(5,5,"10V Power");
   }
-  // add limit+++
-  float fTempo = (float)analogRead(pPowerIn) * 1.1 / 40;
-  while(VPower < 10)
+  while(fPower < 10)
   {
-    fTempo = (float)analogRead(pPowerIn) * 1.1 / 40;
-    VPower = (int)fTempo;
+    fPower = ((float)analogRead(pPowerIn) / 40) + 0.1;
     writeDeb("External power : ", flagDebug);
-    writelnDeb((String)VPower, flagDebug);
+    writelnDeb((String)fPower, flagDebug);
     delay(100);
   }
-  //---------------------
-  // Display current limit from external Power
-  //---------------------
-  fTempo = (float)analogRead(pPowerIn) / 2;
-  fTempo = fTempo * 5;
-  VPower = (int)fTempo;
-  int Vhigh = VPower / 100;
-  int Vlow = VPower - (Vhigh * 100);
-  String Vstring = (String)Vhigh + "." + (String)Vlow;
-  ClearOled();
-  WriteOled(1,5,"Limit");
-  WriteOled(3,5,"");
-  WriteOled(5,5,(String)Vstring);
-  delay(2000);
   //----------
   // Init I2C
   //----------
@@ -138,6 +125,13 @@ void setup()
   int8_t retour = i2c_write_word_data(AddrLTC2631,0b01110000,0);
   retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
   //----------------------------
+  // Read for Test if necessary
+  //----------------------------
+  uint16_t adc_code = 0;
+  if (digitalRead(buttonONOFF) == 0) functTest();
+  if ((digitalRead(buttonPinDOWN) == 0) && (digitalRead(buttonPinUP) != 0)) functTest();
+  if ((digitalRead(buttonPinUP) == 0) && (digitalRead(buttonPinDOWN) != 0)) functTest();
+    //----------------------------
   // Read calibrate
   //----------------------------
   byte Calibrate  = EEPROM.read(2);
@@ -157,25 +151,6 @@ void setup()
   delay(100);
   while(digitalRead(buttonPinUP) == 0);
   while(digitalRead(buttonPinDOWN) == 0);
-  //----------------------------
-  // Read for Test if necessary
-  //----------------------------
-  uint16_t adc_code = 0;
-  //uint8_t acknowledge = i2c_read_word_data(AddrLTC2309, 0b10001000, &adc_code);
-  //do {
-  //  acknowledge = i2c_read_word_data(AddrLTC2309, 0b10011000, &adc_code);
-  //  adc_code = adc_code >> 4;
-  //  adc_code = adc_code & 0xFFF;
-  //  writelnDeb((String)adc_code, true);
-  //} while (1 == 1);
-  //functTest();
-  //do {
-  //  uint16_t retour = readI2C(AddrLTC2309,0b10101000);
-  //  Serial.println(retour,DEC);
-  //} while(1);
-  if (digitalRead(buttonONOFF) == 0) functTest();
-  if (digitalRead(buttonPinDOWN) == 0) functTest();
-  if (digitalRead(buttonPinUP) == 0) functTest();
   //-------------------------------------------------
   // Read Power value from EEPROM and Output LTC2631
   //-------------------------------------------------
@@ -195,17 +170,87 @@ void setup()
   //-----------------
   ResetOled();
   WritePowerOled(Power);
+
+
+  val[0] = char('\n');
+  val[4] = 0;
+   //UBRR0 = 103; // for configuring baud rate of 9600bps
+   //UCSR0C |= (1 << UCSZ01) | (1 << UCSZ00); 
+// Use 8-bit character sizes
+   //UCSR0B |= (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);  
+// Turn on the transmission, reception, and Receive interrupt     
+   //sei();// enable global interrupt
+     
   //----------------
   // interrupt 1kHz
   //----------------
   bitClear(TCCR0A,WGM00);
-  //bitSet(TCCR0A,COM0A0);
   OCR0A = 249;
   bitSet(TIMSK0,OCIE0A);
+  //while(true) {}
+}
+
+void serialEventRun(void) {
+  if (Serial.available()) serialEvent();
+}
+void serialEvent()
+{
+  while (Serial.available()>0){
+    byte value = Serial.read();
+    //-------------------
+    // test Serial input
+    //-------------------
+    if (flagSerial == false)
+    {
+      if (value == 'B')
+      {
+       startSerial();
+      }
+    }
+    if (value == 'E')
+    {
+      stopSerial();
+    }
+  }
 }
 //***************************************************************************//
 // LOOP
 //***************************************************************************//
+void loopTEST()
+{
+  Power  = (EEPROM.read(0) * 256) + EEPROM.read(1);
+  PowerOut(Power,false);
+  uint16_t adc_code_10 = 0;
+  uint16_t adc_code_100 = 0;
+  uint16_t adc_code_1 = 0;
+  uint16_t adc_code_OUT = 0;
+  uint8_t acknowledge = 0;
+  byte x_100 = 0b01111000; // port CH6-CH7
+  byte x_10 = 0b01101000; // port CH4-CH5
+  byte x_1 = 0b11011000; // port CH3
+  byte x_OUT = 0b11001000; // CH1 entrée tension sortie
+  acknowledge = i2c_read_word_data(AddrLTC2309, x_100, &adc_code_100);
+  acknowledge = i2c_read_word_data(AddrLTC2309, x_10, &adc_code_100);
+  acknowledge = i2c_read_word_data(AddrLTC2309, x_1, &adc_code_10);
+  acknowledge = i2c_read_word_data(AddrLTC2309, x_OUT, &adc_code_1);
+  acknowledge = i2c_read_word_data(AddrLTC2309, x_OUT, &adc_code_OUT);
+  adc_code_10 = adc_code_10 >> 4;
+  adc_code_10 = adc_code_10 & 0xFFF;
+  adc_code_100 = adc_code_100 >> 4;
+  adc_code_100 = adc_code_100 & 0xFFF;
+  adc_code_1 = adc_code_1 >> 4;
+  adc_code_1 = adc_code_1 & 0xFFF;
+  adc_code_OUT = adc_code_OUT >> 4;
+  adc_code_OUT = adc_code_OUT & 0xFFF;
+  Serial.print(adc_code_100);
+  Serial.print("-");
+  Serial.print(adc_code_10);
+  Serial.print("-");
+  Serial.print(adc_code_1);
+  Serial.print(" - ");
+  Serial.println(adc_code_OUT);
+  delay(2000);
+}
 void loop()
 {
   //------------
@@ -228,24 +273,6 @@ void loop()
     while(digitalRead(buttonONOFF) == 0) {}
     delay(100);
     while(digitalRead(buttonONOFF) == 0) {}
-  }
-  //-------------------
-  // test Serial input
-  //-------------------
-  if(Serial.available())
-  {
-    byte value =  Serial.read();
-    if (value == 'B')
-    {
-      startSerial();
-    }
-    if ((value != 'B') & (value != 10))
-    {
-      if (value == 'E')
-      {
-        stopSerial();
-      }
-    }
   }
   //--------------------------
   // Read buttons Up and Down
@@ -353,7 +380,7 @@ void loop()
     writelnDeb(String(Resultat.current),flagDebug);
     if (Resultat.flagMESURE)
     {
-      if ((Resultat.current > 20100) && (flagSecurity == true))
+      if ((Resultat.current > 40100) && (flagSecurity == true))
       {
         //-------------
         // Test Secure
@@ -368,20 +395,27 @@ void loop()
   }
   if (flagSerial == true)
   {
+    // led blink
     countOrangeLed++;
-    if (countOrangeLed > 50)
+    if (countOrangeLed > 0)
     {
       //-----------
       // Blink led
       //-----------
-      valBlink ^= 1;
+      //valBlink ^= 1;
       digitalWrite(ledOK,valBlink);
       countOrangeLed = 0;
     }
+    if (flagDebug)
+    {
+      delay(2000);
+    }
   }
 }
+
+
 //***************************************************************************//
-// Interrupt is called once 2 millisecond
+// Interrupt is called each millisecond
 //***************************************************************************//  
 SIGNAL(TIMER0_COMPA_vect)
 {
@@ -405,16 +439,14 @@ SIGNAL(TIMER0_COMPA_vect)
     //------------------
     // Send Datas to PC
     //------------------
-    char val[4];
-    val[0] = char('\n');
-    val[1] = (unsigned long)(uI & 0x3F) + 0x30;
-    val[2] = (unsigned long)((uI>>6) & 0x3F) + 0x30;
-    val[3] = (unsigned long)((uI>>12) & 0x0F) + 0x30;
+    val[1] = (uint16_t)(uI & 0x3F) + 0x30;
+    val[2] = (uint16_t)((uI>>6) & 0x3F) + 0x30;
+    val[3] = (uint16_t)((uI>>12) & 0x0F) + 0x30;
     //unsigned long valueSerial = ((unsigned long)(val[1]-0x30) & 0x0000003F)
     //+ ((unsigned long)((val[2]-0x30)<<6) & 0x00000FC0)
     //+ ((unsigned long)((val[3]-0x30)<<12) & 0x0000F000);
     //Serial.println(valueSerial);
-    String sVal = String(val[0])+String(val[1])+String(val[2])+String(val[3]);
+    String sVal = String(val);
     Serial.print(sVal);
     digitalWrite(pTest,LOW);
   }
@@ -577,11 +609,13 @@ RESULTAT MesureADC(bool flagNON)
 {
   //Serial.println("Mesure");
   RESULTAT Result = {0,0,true};
-  uint16_t uI = readCurrent(0,flagDebug);
+  uint16_t uI = readCurrent(Power,flagDebug);
+  //Serial.println(uI);
   if (uI != 65530)
   {
-    int pOut = readPower(flagDebug);
-    WritePowerOled(pOut);
+    uint16_t pOut = readPower(flagDebug);
+    writelnDeb(String(pOut), flagDebug);
+    WritePowerOled((int)(pOut/5));
     String str;
     if (!flagNON)
     {

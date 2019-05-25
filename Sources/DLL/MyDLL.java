@@ -1,11 +1,6 @@
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.MessageBox;
-import org.eclipse.swt.widgets.Combo;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
+import org.eclipse.nebula.widgets.oscilloscope.multichannel.Oscilloscope;
+import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeDispatcher;
+import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeStackAdapter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
@@ -13,26 +8,30 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
-import org.eclipse.nebula.widgets.oscilloscope.multichannel.Oscilloscope;
-import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeDispatcher;
-import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeStackAdapter;
-import org.eclipse.swt.widgets.Text;
-
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.wb.swt.SWTResourceManager;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Scale;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.wb.swt.SWTResourceManager;
 
 
 //*********************************************************************************
 //*********************************************************************************
 public class MyDLL {
 
-	final static String Version = "3.0.0";
+	final static String Version = "5.0.0";
 	final static boolean initVisible = false;
 	
 	final static int allWidth = 1200;

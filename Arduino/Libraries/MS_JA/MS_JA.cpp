@@ -43,6 +43,7 @@ unsigned char font[] = {
 volatile uint8_t *csport, *dcport, cspinmask, dcpinmask;
 extern volatile unsigned long timer0_millis;
 volatile byte MemCalibrate = 5;
+volatile uint16_t memVoltage = 0;
 //***************************************************************************//
 // read current
 //***************************************************************************//
@@ -55,8 +56,8 @@ uint16_t readCurrent(int iPower, bool flag)
   uint8_t acknowledge = 0;
   byte x_100 = 0b01111000; // port CH6-CH7
   byte x_10 = 0b01101000; // port CH4-CH5
-  byte x_1 = 0b11001000; // port CH1
-  byte x_OUT = 0b10001000; // CH0 entrée tension sortie
+  byte x_1 = 0b11011000; // port CH3
+  byte x_OUT = 0b11001000; // CH1 output power
   acknowledge = i2c_read_word_data(AddrLTC2309, x_100, &adc_code_100);
   uint16_t uI = 65535;
   if (acknowledge == 0)
@@ -83,24 +84,50 @@ uint16_t readCurrent(int iPower, bool flag)
       writeDeb(" - ",true);
       writelnDeb((String)adc_code_OUT,true);
     }
+    memVoltage = adc_code_OUT;
     // Fuse to 100mV Low
-    if (((adc_code_OUT/5) < (iPower-5)) && (iPower != 0))
+      writeDeb("Low Power : ",flag);
+    writeDeb((String)(adc_code_OUT*2),flag);
+    writeDeb(" / ",flag);
+    iPower = (iPower * 10) - 100;
+    writelnDeb((String)iPower,flag);
+    if (((adc_code_OUT*2) < iPower) && (iPower != 0))
     {
-      //WriteOledEnd("Log Power", (String)iPower, (String)adc_code_OUT, "");
-      //WriteOledEnd("Log 65520", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+      if (flag)
+      {
+        WriteOledEnd("Log Power", (String)iPower, (String)adc_code_OUT, "");
+      }
+      else
+      {
+        WriteOledEnd("Error Power", "", "output", "is low");
+      }
       return 65520;
     }
     if ((adc_code_1 < 10) && (adc_code_10 < 10) && (adc_code_100 < 10))
     {
-      //WriteOledEnd("Log 65530", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+      if (flag)
+      {
+        WriteOledEnd("Log 65530", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+      }
+      else
+      {
+        WriteOledEnd("Error 65530", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+      }
       return 65530;
     }
-    if (adc_code_1 < 4010)
+    if (adc_code_1 < 4060)
     {
       // * 100
       if (adc_code_100 < limite)
       {
-        uI = (adc_code_100 + MemCalibrate)/10;
+          if (MemCalibrate < 10)
+          {
+              uI = (adc_code_100 + MemCalibrate)/10;
+          }
+          else
+          {
+              uI = (adc_code_100 - (MemCalibrate-10))/10;
+          }
       }
       else
       // * 10
@@ -119,32 +146,33 @@ uint16_t readCurrent(int iPower, bool flag)
   }
   else
   {
-    //WriteOledEnd("Log 65530", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+    if (flag)
+    {
+      WriteOledEnd("Log 65530", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+    }
+    else
+    {
+      WriteOledEnd("Error 65530", (String)adc_code_1, (String)adc_code_10, (String)adc_code_100);
+    }
     uI = 65530;
   }
   if (flag)
   {
     writeDeb("<< ",true);
     writeDeb((String)uI,true);
-    writelnDeb(" >>",true);
+    writelnDeb(" uA >>",true);
   }
   return uI;
 }
 //***************************************************************************//
 // read power out
 //***************************************************************************//
-int readPower(bool flag)
+uint16_t readPower(bool flag)
 {
-  uint16_t adc_code_OUT = 0;
-  byte x_OUT = 0b10001000; // CH0 entrée tension sortie
-  uint8_t acknowledge = i2c_read_word_data(AddrLTC2309, x_OUT, &adc_code_OUT);
-  acknowledge = i2c_read_word_data(AddrLTC2309, x_OUT, &adc_code_OUT);
-  adc_code_OUT = adc_code_OUT >> 4;
-  adc_code_OUT = adc_code_OUT & 0xFFF;
-  writeDeb((String)adc_code_OUT,flag);
-  writelnDeb(" V",flag);
-  adc_code_OUT = (adc_code_OUT + 4) / 5;
-  return (int)adc_code_OUT;
+  writeDeb("<< ",flag);
+  writeDeb(String(memVoltage), flag);
+  writelnDeb(" V >>",flag);
+  return memVoltage;
 }
 //***************************************************************************//
 // Power Out
@@ -515,20 +543,25 @@ byte functCalibrate(bool flag)
     byte Max = 0;
     for (int x = 0; x < 100; x++)
     {
+        delay(10);
         value = readI2C(AddrLTC2309,0b01111000);
-        if ((value > 80) || (value < 30))
+        if (Max >= 60)
         {
-            retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
-            retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
-            WriteOledFunc("ERROR","Calibrate","1M connect","END");
+            WriteOledFunc("ERROR max","Calibrate","1M connect","END");
+        }
+        if (value < 30)
+        {
+            WriteOledFunc("ERROR min","Calibrate","1M connect","END");
         }
         if (value > Max) Max = value;
         if (value < Min) Min = value;
+        writelnDeb(String(value),true);
     }
     retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
     retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
     if (flag)
     {
+        writeDeb("--------------",true);
         writeDeb("Min : ",true);
         writeDeb((String)Min,true);
         writeDeb(" - Max : ",true);
@@ -536,12 +569,10 @@ byte functCalibrate(bool flag)
     }
     if ((Max-Min) > 9)
     {
-        retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
-        retour = i2c_write_word_data(AddrLTC2631,0b00110000,0);
-        WriteOledFunc("ERROR","Calibrate","1M connect","END");
+        WriteOledFunc("ERROR diff","Calibrate","1M connect","END");
     }
     WriteOledFunc("MicroSupply","is Ready","","NEXT");
-    return 50-Min;
+    return 60-Min;
 }
 //***************************************************************************//
 // Set value to variable
@@ -649,7 +680,7 @@ toto:
         WriteOledReadI2C("LTC2309");
     }
 toto2:
-    WriteOledFunc("Connect","1Kohm","on output","NEXT");
+    WriteOledFunc("Connect","1K ohm","on output","NEXT");
     WriteOledGain("1");
     if (testReadI2C(AddrLTC2309,0b10011000,160,30) == 99)
     {
@@ -739,3 +770,5 @@ void setMillis(unsigned long new_millis)
     timer0_millis = new_millis;
     SREG = oldSREG;
 }
+
+

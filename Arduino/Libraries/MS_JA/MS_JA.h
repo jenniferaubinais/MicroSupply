@@ -7,8 +7,8 @@
 #include <JC_Button.h>
 #include <EEPROM.h>
 // Leds
-#define ledRed A2
-#define ledGreen A3
+#define ledRed A3
+#define ledGreen A2
 #define ledOK A0
 // port OLED
 #define OLED_DC 7
@@ -28,9 +28,9 @@
 #define AddrLTC2631 0x10
 #define AddrLTC2309 0x08
 // ADC limit calcul
-#define limite 3700
+#define limite 4050
 //
-int readPower(bool flag);
+uint16_t readPower(bool flag);
 uint16_t readCurrent(int iPower, bool flag);
 void PowerOut(int ValueOut, bool flag);
 void WritePowerOled(int Power);
