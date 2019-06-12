@@ -169,6 +169,7 @@ uint16_t readCurrent(int iPower, bool flag)
 //***************************************************************************//
 uint16_t readPower(bool flag)
 {
+  memVoltage = memVoltage + 4;
   writeDeb("<< ",flag);
   writeDeb(String(memVoltage), flag);
   writelnDeb(" V >>",flag);

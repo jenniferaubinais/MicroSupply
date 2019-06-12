@@ -28,7 +28,7 @@
 #define AddrLTC2631 0x10
 #define AddrLTC2309 0x08
 // ADC limit calcul
-#define limite 4050
+#define limite 4000
 //
 uint16_t readPower(bool flag);
 uint16_t readCurrent(int iPower, bool flag);

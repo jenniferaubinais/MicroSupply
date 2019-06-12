@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.IO.Ports;
 using System.IO;
@@ -8,11 +7,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
 using System.Net;
-using System.Diagnostics;
-using System.Management;
-using System.Text.RegularExpressions;
 using Microsoft.Win32;
-using System.Security.Cryptography;
+using System.Management;
 
 namespace MicroSupply
 {
@@ -51,24 +47,6 @@ namespace MicroSupply
         //**********************************************************************************//
         static void Main(string[] args)
         {
-
-            //AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
-            string path = Application.StartupPath;
-            path = path.Substring(0, path.IndexOf("bin")) + "RefDLL";
-            string[] dllArray = Directory.GetFiles(path, "*.dll");
-            foreach (string dllName in dllArray)
-            {
-                if (!dllName.Contains("swt"))
-                {
-                    if (!dllName.Contains("native"))
-                    {
-                        string dllNewName = dllName.Replace(path + "\\", "");
-                        EmbeddedAssembly.Load("MicroSupply.RefDLL." + dllNewName, dllNewName);
-                    }
-                }
-            }
-            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
-
             // test arg = DEBUG
             if (args.Length > 0)
             {
@@ -79,7 +57,7 @@ namespace MicroSupply
             }
             // test Version Windows 10
             WriteDebug.Pgm("<< Test Version Windows 10 >>", FlagDebug);
-            String Version = GetOsVer().ToString().Replace(".","");
+            String Version = GetOsVer().ToString().Replace(".", "");
             Int64 xVersion = 0;
             if (Int64.TryParse(Version, out xVersion))
             {
@@ -87,14 +65,17 @@ namespace MicroSupply
                 if (xVersion < 10014393)
                 {
                     String errorVer = "Version Windows 10 is not updated : " + Version;
-                    MessageBox((IntPtr)0, errorVer , "Error Windows 10", 0);
+                    MessageBox((IntPtr)0, errorVer, "Error Windows 10", 0);
                     Environment.Exit(0);
                 }
             }
             else
             {
-                //MessageBox((IntPtr)0, "Version Windows 10 not found", "Error Windows 10", 0);
-                //Environment.Exit(0);
+                if (Version != "")
+                {
+                    MessageBox((IntPtr)0, "Version Windows 10 not found", "Error Windows 10", 0);
+                    Environment.Exit(0);
+                }
             }
             // test JAVA files
             WriteDebug.Pgm("<< Test folder Java >>", FlagDebug);
@@ -103,8 +84,12 @@ namespace MicroSupply
                 bool bJava = Directory.Exists("C:\\Program files\\Java");
                 if (!bJava)
                 {
-                    MessageBox((IntPtr)0, "Folder Java doesn't found !", "Error Java", 0);
-                    Environment.Exit(0);
+                    bJava = Directory.Exists("C:\\Program Files (x86)\\Java");
+                    if (!bJava)
+                    {
+                        MessageBox((IntPtr)0, "Folder Java doesn't found !", "Error Java", 0);
+                        Environment.Exit(0);
+                    }
                 }
             }
             catch
@@ -114,14 +99,68 @@ namespace MicroSupply
             }
             // test version Java
             WriteDebug.Pgm("<< Test Version Java >>", FlagDebug);
+            int verJava = 0;
             try
             {
-                RegistryKey rk = Registry.LocalMachine;
-                RegistryKey subKey = rk.OpenSubKey("SOFTWARE\\JavaSoft\\Java Runtime Environment");
-                string currentVersion = subKey.GetValue("CurrentVersion").ToString();
-                currentVersion = "1.8";
-                double verJava = double.Parse(currentVersion, System.Globalization.CultureInfo.InvariantCulture);
-                if (verJava < 1.8)
+                String registryKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registryKey))
+                {
+                    foreach (RegistryKey subkey in key.GetSubKeyNames().Select(keyName => key.OpenSubKey(keyName)))
+                    {
+                        string oneKey = subkey.GetValue("DisplayName") as string;
+
+                        if (oneKey != null && oneKey.Contains("Java") && !oneKey.Contains("Updater"))
+                        {
+                            string versionMEM = subkey.GetValue("DisplayVersion") as String;
+                            WriteDebug.Pgm("<< Version Java (1) >> " + versionMEM, FlagDebug);
+                            string[] tempo = versionMEM.Split('.');
+                            verJava = int.Parse(tempo[0]);
+                        }
+                    }
+                }
+                if (verJava == 0)
+                {
+                    registryKey = @"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
+                    using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registryKey))
+                    {
+                        foreach (RegistryKey subkey in key.GetSubKeyNames().Select(keyName => key.OpenSubKey(keyName)))
+                        {
+                            string oneKey = subkey.GetValue("DisplayName") as string;
+
+                            if (oneKey != null && oneKey.Contains("Java") && !oneKey.Contains("Updater"))
+                            {
+                                string versionMEM = subkey.GetValue("DisplayVersion") as String;
+                                WriteDebug.Pgm("<< Version Java (2) >> " + versionMEM, FlagDebug);
+                                string[] tempo = versionMEM.Split('.');
+                                verJava = int.Parse(tempo[0]);
+                            }
+                        }
+                    }
+                }
+                if (verJava == 0)
+                {
+                    registryKey = @"SOFTWARE\JavaSoft\Java Runtime Environment";
+                    using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registryKey))
+                    {
+                        string versionMEM = key.GetValue("CurrentVersion") as string;
+                        WriteDebug.Pgm("<< Version Java (3) >> " + versionMEM, FlagDebug);
+                        string[] tempo = versionMEM.Split('.');
+                        verJava = int.Parse(tempo[1]);
+                    }
+                }
+                if (verJava == 0)
+                {
+                    registryKey = @"SOFTWARE\Wow6432Node\JavaSoft\Java Runtime Environment";
+                    using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registryKey))
+                    {
+                        string versionMEM = key.GetValue("CurrentVersion") as string;
+                        WriteDebug.Pgm("<< Version Java (4) >> " + versionMEM, FlagDebug);
+                        string[] tempo = versionMEM.Split('.');
+                        verJava = int.Parse(tempo[1]);
+                    }
+                }
+
+                if (verJava < 8)
                 {
                     MessageBox((IntPtr)0, "Java must have version 1.8 or over !", "Error version Java", 0);
                     Environment.Exit(0);
@@ -137,10 +176,12 @@ namespace MicroSupply
             if (!File.Exists("ikvm-native-win32-x64.dll"))
             {
                 MessageBox((IntPtr)0, "file ikvm-native-win32-x64.dll is missing", "File missing", 0);
+                Environment.Exit(0);
             }
             if (!File.Exists("IKVM.OpenJDK.Core.dll"))
             {
                 MessageBox((IntPtr)0, "file IKVM.OpenJDK.Core.dll is missing", "File missing", 0);
+                Environment.Exit(0);
             }
             // test files SWT
             WriteDebug.Pgm("<< Test files SWT >>", FlagDebug);
@@ -193,8 +234,8 @@ namespace MicroSupply
                 Environment.Exit(0);
             }
             // Application standard
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+            //Application.EnableVisualStyles();
+            //Application.SetCompatibleTextRenderingDefault(false);
             // Hide Console if not debug mode
             if (!FlagDebug)
             {
@@ -539,14 +580,6 @@ namespace MicroSupply
                     }
                 }
             }
-        }
-
-        //**********************************************************************************//
-        //
-        //**********************************************************************************//
-        static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
-        {
-            return EmbeddedAssembly.Get(args.Name);
         }
         //**********************************************************************************//
         //

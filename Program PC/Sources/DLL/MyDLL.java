@@ -1,6 +1,11 @@
-import org.eclipse.nebula.widgets.oscilloscope.multichannel.Oscilloscope;
-import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeDispatcher;
-import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeStackAdapter;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
@@ -8,23 +13,19 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.MessageBox;
-import org.eclipse.swt.widgets.Scale;
-import org.eclipse.swt.widgets.Shell;
+import org.eclipse.nebula.widgets.oscilloscope.multichannel.Oscilloscope;
+import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeDispatcher;
+import org.eclipse.nebula.widgets.oscilloscope.multichannel.OscilloscopeStackAdapter;
 import org.eclipse.swt.widgets.Text;
+
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.wb.swt.SWTResourceManager;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Scale;
 
 
 //*********************************************************************************
@@ -509,7 +510,7 @@ public class MyDLL {
 			//
 			lblCopyright = new Label(composite, SWT.NONE);
 			lblCopyright.setBounds(30, 90, 260, 15);
-			lblCopyright.setText("(c) Elektor 170464 - (c) J.A. 2018 - Version " + Version);
+			lblCopyright.setText("(c) Elektor 170464 - (c) J.A. 2019 - Version " + Version);
 			//
 			cbListCOM = new Combo(composite, SWT.READ_ONLY);
 			cbListCOM.addSelectionListener(new SelectionAdapter() {
